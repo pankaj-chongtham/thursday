@@ -1,0 +1,51 @@
+name: Thursday
+# Trigger when code is merged to release branch
+on:
+  push:
+    branches: [ release ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted  # Run on your local machine
+    name: Deploy to Production
+    permissions:
+      contents: write  # Allow pushing back to repository
+    
+    steps:
+    - name: Deploy to Production Server
+      shell: powershell
+      run: |
+        Write-Host "Deploying to Production Server..."
+        
+        # Navigate to the repository directory
+        Set-Location "C:\thursday\development"
+        
+        # Copy app from current directory to Production Server folder
+        New-Item -ItemType Directory -Path "Production" -Force
+        Copy-Item "app.py" "Production\"
+        
+        # Create simple requirements.txt for production
+        "Flask==2.3.3" | Out-File "Production\requirements.txt" -Encoding utf8
+        
+        # Also copy to the actual Production Server folder outside repo
+        New-Item -ItemType Directory -Path "..\Production" -Force
+        Copy-Item "app.py" "..\Production\"
+        Copy-Item "Production\requirements.txt" "..\Production\"
+        
+        Write-Host "Deployment completed!"
+        Write-Host "Files deployed to both GitHub and local Production Server!"
+    
+    - name: Commit production deployment
+      shell: powershell
+      run: |
+        Set-Location "C:\thursday\development"
+        git config --local user.email "chongthamkaj@gmail.com"
+        git config --local user.name "pankaj-chongtham"
+        git add "Production Server/"
+        $changes = git diff --staged --quiet
+        if ($LASTEXITCODE -ne 0) {
+            git commit -m "Deploy to production from release branch"
+            git push origin release
+        } else {
+            Write-Host "No changes to commit"
+        }
